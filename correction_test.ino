@@ -1,4 +1,5 @@
 #define THRESHBLCK 900
+//#define THRESHOFF 950
 //Receiver
 
 //motors
@@ -103,6 +104,10 @@ void forward() {
       analogWrite(rs, 110);
       analogWrite(ls, 118);
     }
+   /* while ((analogRead(RSensor)) > THRESHOFF  && (analogRead(LSensor)) > THRESHOFF && (analogRead(CSensor)) > THRESHOFF) {
+      analogWrite(rs, 0);
+      analogWrite(ls, 0);
+    } */
     //When detecting an intersection
     if (((analogRead(RSensor)) > THRESHBLCK  && (analogRead(LSensor)) > THRESHBLCK && (analogRead(CSensor)) > THRESHBLCK)) {
       Serial.println("if crossroad");
@@ -120,8 +125,7 @@ void forward() {
     }
 
     //If youve gone off the left side of the tape
-    if ((analogRead(RSensor)) > THRESHBLCK )
-    {
+    if ((analogRead(RSensor)) > THRESHBLCK) {
       correctRight();
     }
     //if youve gone off the right side of the tape
@@ -130,6 +134,39 @@ void forward() {
     }
   }
 }
+
+void forward2() {
+  while (true) {
+    while ((analogRead(RSensor)) < THRESHBLCK  && (analogRead(LSensor)) < THRESHBLCK && (analogRead(CSensor)) > THRESHBLCK) {
+      //Drive forward
+      digitalWrite(rd, HIGH);
+      digitalWrite(ld, HIGH);
+      analogWrite(rs, 110);
+      analogWrite(ls, 118);
+      if (digitalRead(leftbumper) == HIGH || digitalRead(rightbumper) == HIGH) { 
+        reactBumper();
+      }
+    }
+    //When detecting an intersection
+
+    //If youve gone off the left side of the tape
+    if ((analogRead(RSensor)) > THRESHBLCK )
+    {
+      correctRight();
+      if (digitalRead(leftbumper) == HIGH || digitalRead(rightbumper) == HIGH) { 
+        reactBumper();
+      }
+    }
+    //if youve gone off the right side of the tape
+    if ((analogRead(LSensor)) > THRESHBLCK) {
+      correctLeft();
+      if (digitalRead(leftbumper) == HIGH || digitalRead(rightbumper) == HIGH) { 
+        reactBumper();
+      }
+    }
+  }
+}
+
 
 void turnLeft() {
   //turn left until detecting the tape
@@ -171,12 +208,36 @@ void turnAround() {
   digitalWrite(rd, LOW);
   analogWrite(rs, 110);
   analogWrite(ls, 118);
-  delay(400);
+  delay(600);
   while (linesPassed < 1) {
-    if (analogRead(CSensor) < THRESHBLCK) {
+    if (analogRead(CSensor) > THRESHBLCK) {
       linesPassed++;
     }
   }
+  delay(100);
+  while (analogRead(CSensor) < THRESHBLCK) {
+
+    Serial.println(analogRead(CSensor));
+  }
+  Serial.println("stop");
+  //delay(50);
+  forward();
+
+}
+
+void turnAroundStart() {
+  //turn right until detecting tape, delay to ensure it doesnt pick up current line
+  Serial.println("turn around");
+  digitalWrite(rd, LOW);
+  digitalWrite(ld, LOW);
+  analogWrite(rs, 110);
+  analogWrite(ls, 118);
+  delay(400);
+  digitalWrite(ld, HIGH);
+  digitalWrite(rd, LOW);
+  analogWrite(rs, 110);
+  analogWrite(ls, 118);
+  delay(400);
   while (analogRead(CSensor) < THRESHBLCK) {
 
     Serial.println(analogRead(CSensor));
@@ -217,21 +278,23 @@ void checkCrossroads() {
   //set for the left path
   //predetermined actions for a set path, determined by how many crossroads have been passed
   //Serial.println("check crossroad");
-  if (crossCount == 4 || crossCount == 22 || crossCount == 41 || crossCount == 48) {
+  if (crossCount == 3 || crossCount == 18 || crossCount == 45 || crossCount == 35) {
     countEncoder();
     turnLeft();
   }
-  else if (crossCount == 6 || crossCount == 15 || crossCount == 44 || crossCount == 51) {
+  else if (crossCount == 5 || crossCount == 12 || crossCount == 34 || crossCount == 37) {
     countEncoder();
     turnRight();
   }
-  else if (crossCount == 5 || crossCount == 18 || crossCount == 33 || crossCount == 42 || crossCount == 49) {
-    approachDie();
-    reactBumper();
+  else if (crossCount == 4 || crossCount == 15 || crossCount == 27 || crossCount == 33 || crossCount == 49) {
+    forward2();
+    //approachDie();
+    //reactBumper();
   }
-  else if (crossCount == 9 || crossCount == 27 || crossCount == 39 || crossCount == 45 || crossCount == 53) {
-    approachBox();
-    reactBumper();
+  else if (crossCount == 7 || crossCount == 22 || crossCount == 31 || crossCount == 60 || crossCount == 38) {
+    forward2();
+    //approachBox();
+    //reactBumper();
   }
 }
 
@@ -297,7 +360,7 @@ void countEncodeApproach() {
   }
 }
 
-void approachDie() {
+/*void approachDie() {
   while (timer < 120) {
     while ((analogRead(RSensor)) < THRESHBLCK  && (analogRead(LSensor)) < THRESHBLCK && (analogRead(CSensor)) > THRESHBLCK) {
       //Drive forward
@@ -321,9 +384,9 @@ void approachDie() {
   }
 
   timer = 0;
-}
+}*/
 
-void approachBox() {
+/*void approachBox() {
   while (timer < 420) {
     while ((analogRead(RSensor)) < THRESHBLCK  && (analogRead(LSensor)) < THRESHBLCK && (analogRead(CSensor)) > THRESHBLCK) {
       //Drive forward
@@ -346,7 +409,7 @@ void approachBox() {
 
   }
   timer = 0;
-}
+}*/
 
 void reactBumper() {
 
@@ -356,13 +419,13 @@ void reactBumper() {
       digitalWrite(rd, LOW);
       digitalWrite(ld, HIGH);
       analogWrite(rs, 0);
-      analogWrite(ls, 180);
+      analogWrite(ls, 200);
     }
     else if (digitalRead(leftbumper) == HIGH) {
       Serial.println("Left bumper triggered");
       digitalWrite(rd, HIGH);
       digitalWrite(ld, LOW);
-      analogWrite(rs, 180);
+      analogWrite(rs, 200);
       analogWrite(ls, 0);
 
     }
@@ -370,10 +433,10 @@ void reactBumper() {
   }
   Serial.println("Both bumpers triggered");
   //turnAround();
-  if (crossCount == 5 || crossCount == 19 || crossCount == 34 || crossCount == 43 || crossCount == 50) {
+  if (crossCount == 4 || crossCount == 15 || crossCount == 27 || crossCount == 43 || crossCount == 50) {
     pickUp();
   }
-  if (crossCount == 10 || crossCount == 28 || crossCount == 40 || crossCount == 46 ) {
+  if (crossCount == 7 || crossCount == 22 || crossCount == 40 || crossCount == 46 ) {
     yeetIt();
   }
   if (crossCount == 54) {
@@ -393,8 +456,12 @@ void pickUp() {
   delay(400);
   analogWrite(rs, 0);
   analogWrite(ls, 0);
+  delay(200);
+  for (int i = 170; i > 75; i--) {
+    tilt.write(i);
+    delay(50);
+  }
 
-  tilt.write(75);
   delay(800);
   grip.write(143);
   delay(600);
@@ -420,5 +487,5 @@ void yeetIt() {
   tilt.write(170);
   //new
   delay(300);
-  turnAround();
+  turnAroundStart();
 }
