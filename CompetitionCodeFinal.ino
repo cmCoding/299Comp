@@ -24,7 +24,9 @@ int bcount=0;
 #define LTHRESH 950
 #define CTHRESH 950
 #define RTHRESH 950
-#define BUMP 9
+#define BUMPL 9
+#define BUMPR 8
+#define DELAY 400
 int encoder_count = 0;
 int flag = 0;
 
@@ -34,7 +36,8 @@ void Init() {        //initialize the pin value
   pinMode(LDIR, OUTPUT);
   pinMode(LSPEED, OUTPUT);
   pinMode(L, INPUT);
-  pinMode(BUMP,INPUT);
+  pinMode(BUMPL,INPUT);
+  pinMode(BUMPR, INPUT);
   pinMode(3, INPUT);
   myIRboi.attach(3, -1);
   int pin0 = analogRead(LEFT);  // left
@@ -49,12 +52,13 @@ void Init() {        //initialize the pin value
 }
 
 int get_position() {
+  delay(500);
   int gottem = myIRboi.receive(200);
-  if ( gottem > 46 and gottem < 58) {
+  if ( gottem > 47 and gottem < 51) {
       Serial.println( char(gottem) );
       return char(gottem);
   }
-  delay(100);
+  return -1;
 }
 
 void Forward() {      //driving forward
@@ -65,7 +69,7 @@ void Forward() {      //driving forward
 void Backup() {       //driving backward
   digitalWrite(RDIR, LOW);
   digitalWrite(LDIR, LOW);
-  delay(500);
+  delay(700);
 }
 
 
@@ -89,53 +93,59 @@ void setup() {
   Init();
   Serial.begin(9600);
   left_speed = 134;
-  right_speed = 124;
+  right_speed = 117;
   leftSpeed = left_speed;
   rightSpeed = right_speed;
+  digitalWrite(RDIR, HIGH);
+  digitalWrite(LDIR, HIGH);
   analogWrite(LSPEED, left_speed);
   analogWrite(RSPEED, right_speed);
   }
 
 void turn90right() {        //let the robot turn 90 degree to the right
-  encoder_count = 0;
-  while (encoder_count < 13) {
   digitalWrite(RDIR, HIGH);
   digitalWrite(LDIR, LOW);
-  countEncoder();
+  delay(800);
+  while (analogRead(CENTER) < CTHRESH) {
   }
+  Forward();
+
 }
 
 void turn180() {
-  encoder_count = 0;
-  while (encoder_count < 24) {
   digitalWrite(RDIR, HIGH);
   digitalWrite(LDIR, LOW);
-  countEncoder();
+  encoder_count = 0;
+  while (encoder_count < 19){
+    countEncoder();
   }
+  while (analogRead(CENTER) < CTHRESH) {
+  }
+  Forward();
 }
 
 void turn90left() {       // let the robot turn 90 degree to the left
-  encoder_count = 0;
-  while (encoder_count < 11) {
   digitalWrite(RDIR, LOW);
   digitalWrite(LDIR, HIGH);
-  countEncoder();
+  delay(800);
+  while (analogRead(CENTER) < CTHRESH) {
   }
+  Forward();
 }
 
 
 void point1(){
   bcount = 0;
-  while(digitalRead(BUMP) != 0){
+  while(digitalRead(BUMPL) != 0 and digitalRead(BUMPR) != 0){
     Forward();
     driveAlongBlackLine();
       if(bcount == 4){
-      delay(500);
+      delay(DELAY);
       turn90left();
       bcount++;
       }
-      if(bcount == 6){
-        delay(500);
+      if(bcount == 7){
+        delay(DELAY);
         turn90right();
         bcount++;
         }
@@ -144,19 +154,20 @@ void point1(){
     
     pickUp();    //activate the gripper (the function is from other groups and will be used in the final competition) 
 
-    setSpd(left_speed,right_speed);     //set to the initial speed 
+    setSpd(left_speed,right_speed);
+    Backup();              //set to the initial speed 
     turn180();
     bcount = 0;
 
-    while(digitalRead(BUMP) != 0){
+    while(digitalRead(BUMPL) != 0 and digitalRead(BUMPR) != 0){
       driveAlongBlackLine();
       if(bcount == 1){
-      delay(500);
+      delay(DELAY);
       turn90left();
       bcount++;
       }
-      if(bcount == 3){
-        delay(500);
+      if(bcount == 4){
+        delay(DELAY);
         turn90right();
         bcount++;
         }
@@ -165,23 +176,23 @@ void point1(){
 
   yeetIt();    //the function is from other group and will be       used in the final competition 
 
-  Backup(); 
+  //Backup(); 
   turn180();      //turn 180 degrees 
   bcount = 0;  
 }
 
 void point2(){
 bcount = 0;
-while(digitalRead(BUMP) != 0){
+while(digitalRead(BUMPL) != 0 and digitalRead(BUMPR) != 0){
 Forward();
 driveAlongBlackLine();
   if(bcount == 4){
-  delay(500);
+  delay(DELAY);
   turn90right();
   bcount++;
   }
-  if(bcount == 6){
-    delay(500);
+  if(bcount == 7){
+    delay(DELAY);
     turn90left();
     bcount++;
     }
@@ -191,18 +202,19 @@ driveAlongBlackLine();
     pickUp();       //activate the gripper (the function is from other groups and will be used in the final competition) 
 
     setSpd(left_speed,right_speed);     //set to the initial speed 
+    Backup();
     turn180();
     bcount = 0;
 
-    while(digitalRead(BUMP) != 0){
+    while(digitalRead(BUMPL) != 0 and digitalRead(BUMPR) != 0){
       driveAlongBlackLine();
       if(bcount == 1){
-      delay(500);
+      delay(DELAY);
       turn90right();
       bcount++;
       }
-      if(bcount == 3){
-        delay(500);
+      if(bcount == 4){
+        delay(DELAY);
         turn90left();
         bcount++;
         }
@@ -223,41 +235,43 @@ void driveAlongBlackLine() {       //keep the robot on the track
   
  while ( analogRead(CENTER) < CTHRESH and analogRead(RIGHT) > RTHRESH and analogRead(LEFT) < LTHRESH ) {
     adjustRight();      //adjusting the speed when it is not straight
-    delay(50);
+    delay(100);
     Forward();
   }
 
  while ( analogRead(CENTER) < CTHRESH and analogRead(RIGHT) < RTHRESH and analogRead(LEFT) > LTHRESH ) {
     adjustLeft();                                     //adjusting the speed when it is not straight
-    delay(50);
+    delay(100);
     Forward();
   }
   if ( analogRead(CENTER) > CTHRESH and analogRead(RIGHT) > RTHRESH and analogRead(LEFT) > LTHRESH){
     bcount++;                                         //increment the counter when passing a intersection
-    delay(600);
+    delay(300);
   }
 }
 
 void adjustRight() {
   digitalWrite(RDIR,LOW);
+  
 }
 
 void adjustLeft() {
   digitalWrite(LDIR,LOW);
+ 
 }
 
 void coordinate(int x, int y) {     
 //toward the ball
-while (digitalRead(BUMP)!= 0){   //use bump to identify whether it’s at wall or not
+while (digitalRead(BUMPL) != 0 and digitalRead(BUMPR) != 0l){   //use bump to identify whether it’s at wall or not
   Forward();
   driveAlongBlackLine();    //to drive along the black and get the bcount
  if ( bcount == y and x<0){     //to the ball at the left wall
-    delay(300);
+    delay(DELAY);
     turn90left();
     bcount++;              //the purpose of the increment is to let it drive              straight until the bump is pushed
    }
 if (bcount == y and x>0){
-  delay(300);
+  delay(DELAY);
   turn90right();        //to the ball at the right wall
 bcount++;              //the purpose of the increment is to let it drive straight until the bump is pushed
    }
@@ -265,19 +279,23 @@ bcount++;              //the purpose of the increment is to let it drive straigh
   setSpd(0,0);     //stop the robot
   pickUp();        //activate the gripper (the function is from other groups and will be used in the final competition)
   setSpd(left_speed,right_speed);     //set to the initial speed
+  Backup();
+  setSpd(0,0);
+  delay(20);
+  setSpd(134,117);
   turn180();
   bcount = 0;       //set the bcount to 0 and then go back
   bcount = 0;       // return to the basket
-while (digitalRead(BUMP) != 0){
+while (digitalRead(BUMPL) != 0 and digitalRead(BUMPR) != 0){
   Forward();
   driveAlongBlackLine();
- if ( bcount == abs(x) and x<0){
-       delay(500);    
+ if ( bcount == abs(x)-1 and x<0){
+       delay(DELAY);    
        turn90right();        //turn right and toward the basket
        bcount++;      //the purpose of the increment is to let it drive              straight until the bump is pushed
    }
-if (bcount == abs(x) and x>0){
-  delay(500);
+if (bcount == abs(x)-1 and x>0){
+  delay(DELAY);
   turn90left();
   bcount++;   //the purpose of the increment is to let it drive straight until the bump is pushed
    }
@@ -285,6 +303,9 @@ if (bcount == abs(x) and x>0){
   //setSpd(0,0);
   yeetIt();     //the function is from other group and will be       used in the final competitio
   Backup();
+  setSpd(0,0);
+  delay(20);
+  setSpd(134,117);
   turn180();
   bcount = 0;
 //  setSpd(108,99);      //set to the initial speed
@@ -310,9 +331,7 @@ if (bcount == abs(x) and x>0){
       timer++;
       correctLeft();
     }
-
   }
-
   timer = 0;
 }*/
 
@@ -336,7 +355,6 @@ if (bcount == abs(x) and x>0){
       timer++;
       correctLeft();
     }
-
   }
   timer = 0;
 }*/
@@ -382,26 +400,49 @@ void yeetIt() {
 }
 
 void loop() {                                        // main loop
-//  if (get_position() == 0){     //do the path 0
-//    coordinate(-2,3);
-//    coordinate(4,5);
-//    coordinate(0,6);
-//    coordinate(-2,2);
-//    coordinate(-2,1);
-//    setSpd(0,0);
-//  }
-//  if (get_position() == 1){      //do the path 1
-//    coordinate(-3,4);
-//    coordinate(3,4);
-//    coordinate(0,6);
+  Serial.println(get_position());
+  if (get_position() == 0){     //do the path 0
+//    analogWrite(LSPEED, left_speed);
+//    analogWrite(RSPEED, right_speed);
+    coordinate(-2,3);
+    coordinate(4,5);
+    coordinate(0,5);
+    coordinate(-2,2);
+    coordinate(-2,1);
+    setSpd(0,0);
+  }
+  if (get_position() == 1){      //do the path 1
+//    analogWrite(LSPEED, left_speed);
+//    analogWrite(RSPEED, right_speed);
+    coordinate(-3,4);
+    coordinate(3,4);
+    coordinate(0,6);
     point1();
     point2();
-//  }
+    setSpd(0,0);
+  }
   if (get_position() == 2){      //do the path 2
+//    digitalWrite(RDIR, LOW);
+//    digitalWrite(LDIR, LOW);
+//    analogWrite(LSPEED, left_speed);
+//    analogWrite(RSPEED, right_speed);
     coordinate(-4,5);
     coordinate(2,3);
     coordinate(0,6);
     coordinate(2,2);
     coordinate(2,1);
+    setSpd(0,0);
   }
+
+//coordinate(1,1);
+//Forward();
+//
+//
+//turn90left();
+//Forward();
+//delay(300);   TEST CODE FOR TWEAKING THE TURNS
+//turn180();
+//Forward();
+//delay(300);
+
 }
